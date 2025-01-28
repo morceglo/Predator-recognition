@@ -23,7 +23,7 @@ Uroderma convexum (frugivorous bat), Rhogeessa io (sympatric insectivorous bat) 
 * [Statistical analysis and graphs](https://github.com/morceglo/Predator-recognition/blob/main/Analyses.R)
 
 ## Status
-Project is: Under consideration at The American Naturalist
+Project is: Under consideration at Biology Letters.
 
 ## Contact
 Created by [Gloriana_Chaverri](batcr.com/)
