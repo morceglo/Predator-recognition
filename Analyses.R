@@ -1,4 +1,5 @@
-setwd("C:/Users/Gloriana/Desktop/Predator recognition")
+setwd("C:/Users/Gloriana/Dropbox/Publicaciones/Publicaciones en progreso/1_Submitted/1_Predator recognition Thyroptera/Analyses")
+
 
 library(readr)
 data <- read_delim("data.csv", delim = ";", 
@@ -30,6 +31,16 @@ library(glmmTMB)
 
 # Fit the GLMM with a Negative Binomial distribution
 glmm_nb <- glmmTMB(response ~ treatment*period + (1 | bat), family = nbinom2, data = data)
+
+# Extract variance estimate for the random effect
+VarCorr(glmm_nb)
+
+#calculate the proportion of variance explained by the random effect using the Intraclass Correlation Coefficient (ICC)
+#If ICC is > 0.2 (20%), the random effect explains a meaningful portion of the variability.
+#If ICC is close to 0, the random effect is weak and may not be necessary.
+library(performance)
+icc(glmm_nb)
+
 
 # Summary of the model
 summary(glmm_nb)
@@ -145,6 +156,15 @@ data_during <- subset(data, period == "during")
 model <- glmmTMB(response ~ bat_type + (1|bat), 
                  family = nbinom2, 
                  data = data_during)
+
+# Extract variance estimate for the random effect
+VarCorr(model)
+
+#calculate the proportion of variance explained by the random effect using the Intraclass Correlation Coefficient (ICC)
+#If ICC is > 0.2 (20%), the random effect explains a meaningful portion of the variability.
+#If ICC is close to 0, the random effect is weak and may not be necessary.
+library(performance)
+icc(model)
 
 # Check the model summary
 summary(model)
@@ -342,6 +362,15 @@ data$bat_type <- factor(data$bat_type, levels = c("control", "insectivorous", "c
 # Fit the GLMM with a Negative Binomial distribution
 glmm_nb_order_species <- glmmTMB(response ~ order*bat_type + (1 | bat), family = nbinom2, data = data_during)
 
+# Extract variance estimate for the random effect
+VarCorr(glmm_nb_order_species)
+
+#calculate the proportion of variance explained by the random effect using the Intraclass Correlation Coefficient (ICC)
+#If ICC is > 0.2 (20%), the random effect explains a meaningful portion of the variability.
+#If ICC is close to 0, the random effect is weak and may not be necessary.
+library(performance)
+icc(glmm_nb_order_species)
+
 # Summary of the model
 summary(glmm_nb_order_species)
 
@@ -376,9 +405,10 @@ library(ggplot2)
 
 # Create a boxplot showing responses by 'bat_type' and 'order', with individual lines
 # Base plot with boxplots showing both bat_type and order in separate panels
-plot <- ggplot(data, aes(x = bat_type, y = response, fill = order)) +
+plot <- ggplot(data_during, aes(x = bat_type, y = response, fill = order)) +
   # Boxplots with specific fill colors for 'order'
   geom_boxplot(aes(color = order), position = position_dodge(0.8), outlier.shape = NA) +  # Boxplots by bat_type and order
+  geom_point(color = "black", position = position_jitter(width = 0.1, height = 0)) +
   scale_fill_manual(values = c("NP-P" = "white", "P-NP" = "gray")) +  # Set NP-P to white and P-NP to gray
   scale_color_manual(values = c("NP-P" = "black", "P-NP" = "black")) +  # Set line color to black (or neutral)
   theme_minimal() +
@@ -397,7 +427,9 @@ plot <- ggplot(data, aes(x = bat_type, y = response, fill = order)) +
     axis.text.x = element_text(size = 12, angle = 0),  # Make x-axis labels horizontal
     axis.text.y = element_text(size = 12)
   ) +
-  facet_wrap(~ order, scales = "free_y")  # Facet by 'order' with independent y-axis scales
+  facet_wrap(~ order, scales = "fixed")  # Facet by 'order' with independent y-axis scales
+
+
 
 # Create a data frame with significance annotations and p-values
 signif_data <- data.frame(
@@ -418,131 +450,48 @@ plot <- plot +
 print(plot)
 
 
-ggsave("Figure4.png", width = 10, height = 3, dpi = 600)
+ggsave("Figure3.png", width = 9, height = 3, dpi = 600)
 
 
 
+##-------------------------------------------------------------------------------------------------------------
+#Signal Detection Theory analyses
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-##------------------------------------------------------------------------------------------------------
-##Supplementary materials
-
-
-#Generalized linear mixed model (GLMM) to test if the number of responses is determined by the order in which the predator calls are presented.
-
-library(glmmTMB)
-
-# Subset data to only include the 'during' period
-data_during <- subset(data, period == "during")
-
-# Fit the GLMM with a Negative Binomial distribution
-glmm_nb_order <- glmmTMB(response ~ treatment*order*period + (1 | bat), family = nbinom2, data = data_during)
-
-# Summary of the model
-summary(glmm_nb_order)
-
-
-##determine if the number of response calls differ within treatment given the three periods
-library(emmeans)
+# Load necessary libraries
 library(dplyr)
 
-# Get estimated marginal means for the interaction
-emm <- emmeans(glmm_nb_order, ~ period | order | treatment)
+# Load the dataset
+data <- read.csv("data.csv", sep=";")
 
-# Perform pairwise comparisons with Tukey adjustment
-pairwise_results <- contrast(emm, method = "pairwise", adjust = "tukey")
-pairwise_results
+# Ensure categorical variables are factors
+data$treatment <- as.factor(data$treatment)
+data$bat_type <- as.factor(data$bat_type)
+data$period <- as.factor(data$period)
 
+# Filter for the 'during' period
+filtered_data <- data %>% filter(period == "during")
 
-#Graph that shows these results
-# Load necessary package
-library(ggplot2)
-
-# Reorder the 'period' factor
-data$period <- factor(data$period, levels = c("before", "during", "after"))
-
-# Base plot with boxplots and jittered points
-plot <- ggplot(data, aes(x = period, y = response)) +
-  # Boxplots with specific fill colors
-  geom_boxplot(aes(fill = period), color = "black", position = position_dodge(0.8), outlier.shape = NA) +
-  # Lines per bat
-  geom_line(aes(group = bat), alpha = 0.5, linetype = "dotted", color = "black") +
-  # Individual points jittered, all in black
-  geom_point(color = "black", position = position_jitter(width = 0.1, height = 0)) +
-  # Facets for treatments and orders
-  facet_grid(treatment ~ order) +
-  # Manual color scale for periods
-  scale_fill_manual(values = c("before" = "white", "during" = "grey", "after" = "white")) +
-  # Minimal theme
-  theme_minimal() +
-  labs(
-    x = "",
-    y = "Number of responses",
-    title = ""
-  ) +
-  theme(
-    legend.position = "none",  # Remove legend
-    strip.background = element_blank(),  # Remove default strip background
-    strip.text = element_text(size = 16, face = "bold"),  # Make facet titles clear
-    strip.placement = "outside",  # Move facet titles outside the graph area
-    panel.border = element_rect(color = "black", fill = NA, size = 1),  # Add borders to each facet
-    axis.title.y = element_text(size = 14),
-    axis.text.x = element_text(size = 14),
-    axis.text.y = element_text(size = 12)
+# Evaluate response patterns based on predictions
+response_summary <- filtered_data %>%
+  group_by(treatment, bat_type) %>%
+  summarise(
+    no_response = mean(response == 0) * 100,  # Expected for predator treatment
+    response_present = mean(response > 1) * 100  # Expected for non-predator treatment
   )
 
-# Create a data frame with significance annotations
-signif_data <- data.frame(
-  treatment = rep(c("non-predator", "predator"), each = 6),
-  order = rep(c("NP-P", "P-NP"), each = 3, times = 2),
-  x = c(1, 2.1, 1, 1, 2.1, 1, 1, 2.1, 1, 1, 2.1, 1),
-  xend = c(1.9, 3, 3, 1.9, 3, 3, 1.9, 3, 3, 1.9, 3, 3),
-  y = c(120, 120, 112, 120, 120, 112, 120, 120, 112, 120, 120, 112),
-  label_x = c(1.5, 2, 2.5, 1.5, 2, 2.5, 1.5, 2, 2.5, 1.5, 2, 2.5),
-  label_y = c(124, 116, 124, 124, 116, 124, 124, 116, 124, 124, 116, 124),
-  label = c("ns", "ns", "**", "ns", "ns", "ns", "***", "*", "***", "***", "ns", "***")
-)
+# Calculate accuracy (proportion of correct responses based on prediction)
+accuracy_summary <- filtered_data %>%
+  mutate(correct_response = case_when(
+    treatment == "predator" & response == 0 ~ 1,  # Correct if no response to predator
+    treatment == "non-predator" & response > 1 ~ 1,  # Correct if response to non-predator
+    TRUE ~ 0  # Incorrect otherwise
+  )) %>%
+  group_by(treatment, bat_type) %>%
+  summarise(accuracy = mean(correct_response) * 100)
 
-# Add the horizontal lines and significance labels using geom_segment
-plot <- plot +
-  geom_segment(data = signif_data, aes(x = x, xend = xend, y = y, yend = y), color = "black") +
-  geom_text(data = signif_data, aes(x = label_x, y = label_y, label = label), size = 4)
-
-# Print the plot
-print(plot)
-
-
-ggsave("Supplementary figure.png", width = 8, height = 8, dpi = 600)
-
-
-
+# Print summary statistics
+print(response_summary)
+print(accuracy_summary)
 
 
 
